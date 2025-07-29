@@ -1,0 +1,22 @@
+<!-- views/video.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Secure Video</title>
+</head>
+<body>
+  <div id="vdo-player"></div>
+  <script src="https://player.vdocipher.com/playerAssets/1.6.16/vdo.js"></script>
+  <script>
+    const otp = "<%= otp %>";
+    const playbackInfo = "<%= playbackInfo %>";
+
+    const player = new VdoPlayer({
+      otp: otp,
+      playbackInfo: playbackInfo,
+      theme: "9ae8bbe8dd964ddc9bdb932cca1cb59a",
+      container: document.querySelector("#vdo-player"),
+    });
+  </script>
+</body>
+</html>
