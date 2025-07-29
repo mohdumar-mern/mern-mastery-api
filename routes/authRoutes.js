@@ -1,5 +1,5 @@
 import express from 'express';
-import { handleValidationErrors, validateLogin, validateUser } from '../middlewares/auth-validateMiddleware.js';
+import { handleValidationErrors, validateLogin, validateUser } from '../middlewares/validateMiddleware.js';
 import { login, logout, register } from '../controllers/authController.js';
 import { authLimiter } from '../utils/rateLimiter.js';
 
