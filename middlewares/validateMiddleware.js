@@ -40,6 +40,19 @@ export const validateLecture = [
   }),
 ];
 
+export const validateProgress = [
+  body('courseId').isMongoId().withMessage('Invalid course ID'),
+  body('unitId').isMongoId().withMessage('Invalid unit ID'),
+  body('lectureId').isMongoId().withMessage('Invalid lecture ID'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Validation failed', errors: errors.array() });
+    }
+    next();
+  },
+];
+
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
