@@ -17,7 +17,7 @@ const storage = new CloudinaryStorage({
     const originalName = file.originalname.split('.')[0].replace(/\s+/g, '_');
 
     return {
-      folder: `waquar/${folder}`,
+      folder: `mern-mastery/${folder}`,
       resource_type: resourceType,
       allowed_formats: allowedFormats,
       public_id: `${Date.now()}-${originalName}-${Math.random().toString(36).substring(2, 8)}`,
@@ -28,6 +28,7 @@ const storage = new CloudinaryStorage({
         { fetch_format: 'auto', quality: 'auto' }, // Additional optimizations
       ],
     };
+        logger.info(`Uploading file: ${file.originalname}, Config: ${JSON.stringify(config)}`);
   },
 });
 

@@ -38,6 +38,8 @@ export const addUnit = expressAsyncHandler(async (req, res) => {
     {
       public_id: req.file.filename,
       resource_type: req.file.mimetype.startsWith('video') ? 'video' : 'raw',
+       timestamp: Math.floor(Date.now() / 1000),
+      expires_at: Math.floor(Date.now() / 1000) + 3600, // URL expires in 1 hour
     },
     process.env.CLOUDINARY_API_SECRET
   );
@@ -85,6 +87,8 @@ export const addLecture = expressAsyncHandler(async (req, res) => {
     {
       public_id: req.file.filename,
       resource_type: req.file.mimetype.startsWith('video') ? 'video' : 'raw',
+        timestamp: Math.floor(Date.now() / 1000),
+      expires_at: Math.floor(Date.now() / 1000) + 3600, // URL expires in 1 hour
     },
     process.env.CLOUDINARY_API_SECRET
   );
@@ -138,6 +142,54 @@ export const getCourseById = expressAsyncHandler(async (req, res) => {
   logger.info(`Fetched course: ${course.title}`);
   res.json(course);
 });
+
+// export const getCourseById = expressAsyncHandler(async (req, res) => {
+//   const course = await Course.findById(req.params.id).populate('createdBy', 'username email');
+//   if (!course) {
+//     logger.warn(`Course not found: ${req.params.id}`);
+//     return res.status(404).json({ message: 'Course not found' });
+//   }
+
+//   // Generate fresh signed URLs for secure access
+//   course.units.forEach((unit) => {
+//     if (unit.introduction.publicId) {
+//       const signedUrl = cloudinary.utils.api_sign_request(
+//         {
+//           public_id: unit.introduction.publicId,
+//           resource_type: unit.introduction.fileType === 'video' ? 'video' : 'raw',
+//           timestamp: Math.floor(Date.now() / 1000),
+//           expires_at: Math.floor(Date.now() / 1000) + 3600,
+//         },
+//         process.env.CLOUDINARY_API_SECRET
+//       );
+//       unit.introduction.fileUrl = `${cloudinary.url(unit.introduction.publicId, {
+//         resource_type: unit.introduction.fileType === 'video' ? 'video' : 'raw',
+//         secure: true,
+//       })}?_a=${signedUrl}`;
+//     }
+//     unit.lectures.forEach((lecture) => {
+//       if (lecture.publicId) {
+//         const signedUrl = cloudinary.utils.api_sign_request(
+//           {
+//             public_id: lecture.publicId,
+//             resource_type: lecture.fileType === 'video' ? 'video' : 'raw',
+//             timestamp: Math.floor(Date.now() / 1000),
+//             expires_at: Math.floor(Date.now() / 1000) + 3600,
+//           },
+//           process.env.CLOUDINARY_API_SECRET
+//         );
+//         lecture.fileUrl = `${cloudinary.url(lecture.publicId, {
+//           resource_type: lecture.fileType === 'video' ? 'video' : 'raw',
+//           secure: true,
+//         })}?_a=${signedUrl}`;
+//       }
+//     });
+//   });
+
+//   logger.info(`Fetched course: ${course.title}`);
+//   res.json(course);
+// });
+
 
 export const updateCourse = expressAsyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
