@@ -10,6 +10,7 @@ const app = express();
 
 import authRoutes from './routes/authRoutes.js'
 import courseRoute from './routes/courseRoutes.js'
+import progressRoutes from './routes/progressRoutes.js'
 
 // Get __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -41,6 +42,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/auth", authRoutes)
 app.use("/api/courses", courseRoute)
+app.use("/api/progress", progressRoutes)
 
 // page not found
 app.use(pageNotFound)
