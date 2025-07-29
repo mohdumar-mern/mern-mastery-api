@@ -1,5 +1,8 @@
+import logger from "../utils/logger.js";
+
 export const errorHandling = (err, req, res, next) => {
     console.error(err.stack);
+    logger.error(`Unhandled error: ${err.stack}`);
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 
