@@ -25,6 +25,16 @@ const courseSchema = new mongoose.Schema({
   units: [unitSchema],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
+  ratings: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    rating: { type: Number, min: 1, max: 5, required: true },
+    createdAt: { type: Date, default: Date.now },
+  }],
+  comments: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    comment: { type: String, trim: true, maxlength: 500, required: true },
+    createdAt: { type: Date, default: Date.now },
+  }],
 });
 
 // Indexes for performance
