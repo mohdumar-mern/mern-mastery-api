@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 
 // Import rate limiter and routes
 import { limiter } from "./utils/rateLimiter.js";
-import vdoRouter from './routes/vdoRoutes.js'
+import { errorHandling, pageNotFound } from "./middlewares/errorHandlerMiddleware.js";
 
 // Set view engine
 app.set("view engine", "ejs");
@@ -37,29 +37,9 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "Hello Coders..." });
 });
 
-
-
-
-
-
-// ✅ Video file direct download
-app.get("/download", (req, res) => {
-  res.download(path.join(__dirname, "uploads", "1.mp4"));
-});
-
-// ✅ Render video page with embedded player
-app.get("/video", (req, res) => {
-  res.render("video", { title: "Video Page", videoFile: "1.mp4" });
-});
-
-
-app.use("/api", vdoRouter);
-
+// page not found
+app.use(pageNotFound)
 
 // Error handler middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong!" });
-});
-
+app.use(errorHandling)
 export default app;
