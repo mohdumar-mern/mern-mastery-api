@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6 },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   createdAt: { type: Date, default: Date.now },
+  // models/User.js
+refreshToken: { type: String },
 });
 
 userSchema.index({ email: 1, username: 1 });
