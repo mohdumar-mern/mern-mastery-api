@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { handleValidationErrors, validateLogin, validateUser } from '../middlewares/validateMiddleware.js';
-import { login, logout, register } from '../controllers/authController.js';
+import { login, logout, refreshToken, register } from '../controllers/authController.js';
 import { authLimiter } from '../utils/rateLimiter.js';
 
 

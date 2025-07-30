@@ -281,3 +281,23 @@ export const commentCourse = expressAsyncHandler(async (req, res) => {
   logger.info(`Comment added to course ${courseId} by user ${req.user.id}`);
   res.json({ message: 'Comment submitted' });
 });
+
+
+// controllers/courseController.js
+export const getSignedUrl = expressAsyncHandler(async (req, res) => {
+  const { publicId, fileType } = req.body;
+  const signedUrl = cloudinary.utils.api_sign_request(
+    {
+      public_id: publicId,
+      resource_type: fileType === 'video' ? 'video' : 'raw',
+      timestamp: Math.floor(Date.now() / 1000),
+      expires_at: Math.floor(Date.now() / 1000) + 300, // 5-minute expiry
+    },
+    process.env.CLOUDINARY_API_SECRET
+  );
+  const url = `${cloudinary.url(publicId, {
+    resource_type: fileType === 'video' ? 'video' : 'raw',
+    secure: true,
+  })}?_a=${signedUrl}`;
+  res.json({ url });
+});

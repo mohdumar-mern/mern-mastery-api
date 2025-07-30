@@ -23,12 +23,13 @@ const storage = new CloudinaryStorage({
       public_id: `${Date.now()}-${originalName}-${Math.random().toString(36).substring(2, 8)}`,
       secure: true,
       access_mode: 'authenticated',
-    transformation: isPDF ? undefined : [
-        { streaming_profile: 'hd' }, // Separate transformation for streaming_profile
-        { fetch_format: 'auto', quality: 'auto' }, // Additional optimizations
+      // middleware/upload.js
+      transformation: isPDF ? undefined : [
+        { streaming_profile: 'hd', format: 'm3u8', drm: { widevine: true } },
+        { fetch_format: 'auto', quality: 'auto' },
       ],
     };
-        logger.info(`Uploading file: ${file.originalname}, Config: ${JSON.stringify(config)}`);
+    logger.info(`Uploading file: ${file.originalname}, Config: ${JSON.stringify(config)}`);
   },
 });
 

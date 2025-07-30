@@ -32,7 +32,16 @@ app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(globalLimiter);
-app.use(cors());
+app.use(cors(
+  {
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Length"],
+  }
+ 
+));
 app.use(morgan("dev"));
 app.use(cookieParser());
 
