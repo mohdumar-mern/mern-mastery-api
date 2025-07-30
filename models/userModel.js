@@ -16,6 +16,7 @@ refreshToken: { type: String },
     completed: { type: Boolean, default: false },
     completedAt: { type: Date },
   }],
+refreshToken: { type: String }
 });
 
 userSchema.index({ email: 1, username: 1 });
