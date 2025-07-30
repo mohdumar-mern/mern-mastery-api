@@ -53,6 +53,14 @@ export const validateProgress = [
   },
 ];
 
+export const validateRating = [
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5'),
+];
+
+export const validateComment = [
+  body('comment').trim().isLength({ min: 1, max: 500 }).withMessage('Comment must be between 1 and 500 characters'),
+];
+
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

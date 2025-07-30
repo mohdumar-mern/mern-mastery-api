@@ -243,3 +243,41 @@ export const deleteCourse = expressAsyncHandler(async (req, res) => {
   logger.info(`Course deleted: ${course.title} by user ${req.user.id}`);
   res.json({ message: 'Course deleted successfully' });
 });
+
+
+export const rateCourse = expressAsyncHandler(async (req, res) => {
+  const { courseId } = req.params;
+  const { rating } = req.body;
+  const course = await Course.findById(courseId);
+  if (!course) {
+    logger.warn(`Course not found for rating: ${courseId}`);
+    return res.status(404).json({ message: 'Course not found' });
+  }
+
+  const existingRating = course.ratings.find(r => r.userId.toString() === req.user.id);
+  if (existingRating) {
+    existingRating.rating = rating;
+    existingRating.createdAt = new Date();
+  } else {
+    course.ratings.push({ userId: req.user.id, rating });
+  }
+
+  await course.save();
+  logger.info(`Course rated: ${courseId} by user ${req.user.id} with rating ${rating}`);
+  res.json({ message: 'Rating submitted' });
+});
+
+export const commentCourse = expressAsyncHandler(async (req, res) => {
+  const { courseId } = req.params;
+  const { comment } = req.body;
+  const course = await Course.findById(courseId);
+  if (!course) {
+    logger.warn(`Course not found for comment: ${courseId}`);
+    return res.status(404).json({ message: 'Course not found' });
+  }
+
+  course.comments.push({ userId: req.user.id, comment });
+  await course.save();
+  logger.info(`Comment added to course ${courseId} by user ${req.user.id}`);
+  res.json({ message: 'Comment submitted' });
+});

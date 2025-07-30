@@ -1,7 +1,7 @@
 // routes/progressRoutes.js
 import express from 'express';
 import { markLectureCompleted, getProgress } from '../controllers/progressController.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { validateProgress } from '../middlewares/validateMiddleware.js';
 
 const router = express.Router();
