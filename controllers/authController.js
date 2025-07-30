@@ -92,6 +92,7 @@ const token = generateToken(user._id, user.role);
 
 // Logout
 export const logout = expressAsyncHandler(async (req, res) => {
+  console.log(req.user)
   const user = await User.findById(req.user.id);
   if (user) {
     user.refreshToken = null;

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { version } from 'mongoose';
 
 const lectureSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 100 },
@@ -6,6 +6,7 @@ const lectureSchema = new mongoose.Schema({
   publicId: { type: String },
   fileType: { type: String, enum: ['video', 'pdf'], required: true },
   order: { type: Number, required: true }, // To maintain lecture order (1, 2, 3, etc.)
+  version: { type: String },
 });
 
 const unitSchema = new mongoose.Schema({
@@ -14,6 +15,7 @@ const unitSchema = new mongoose.Schema({
     fileUrl: { type: String, required: true },
     publicId: { type: String },
     fileType: { type: String, enum: ['video', 'pdf'], required: true },
+    version: { type: String,  },
   },
   lectures: [lectureSchema],
 });

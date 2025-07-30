@@ -17,7 +17,7 @@ router.put('/:id', authMiddleware, adminMiddleware, validateCourse, handleValida
 router.delete('/:id', authMiddleware, adminMiddleware, deleteCourse);
 router.post('/:courseId/rate', authMiddleware, rateCourse);
 router.post('/:courseId/comment', authMiddleware, commentCourse);
-// routes/courseRoutes.js
 router.post('/signed-url', authMiddleware, getSignedUrl);
+// router.post('/signed-url', getSignedUrl);
 
-export default router;
+export default router; 

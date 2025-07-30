@@ -1,6 +1,7 @@
 import expressAsyncHandler from 'express-async-handler';
 import Course from '../models/courseModel.js';
 import cloudinary from '../utils/cloudinary.js';
+import { uploadFile } from '../middlewares/uploadMiddleware.js';
 import logger from '../utils/logger.js';
 
 export const createCourse = expressAsyncHandler(async (req, res) => {
@@ -34,22 +35,20 @@ export const addUnit = expressAsyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Unauthorized' });
   }
 
-  const signedUrl = cloudinary.utils.api_sign_request(
-    {
-      public_id: req.file.filename,
-      resource_type: req.file.mimetype.startsWith('video') ? 'video' : 'raw',
-       timestamp: Math.floor(Date.now() / 1000),
-      expires_at: Math.floor(Date.now() / 1000) + 3600, // URL expires in 1 hour
-    },
-    process.env.CLOUDINARY_API_SECRET
+  const { publicId, url, fileType, version } = await uploadFile(
+    req.file,
+    `courses/${courseId}/units`,
+    req.file.mimetype === 'application/pdf'
   );
 
+  logger.info(`Unit file uploaded: publicId=${publicId}, version=${version}, fileType=${fileType}, url=${url}`);
   course.units.push({
     title,
     introduction: {
-      fileUrl: `${req.file.path}?_a=${signedUrl}`,
-      publicId: req.file.filename,
-      fileType: req.file.mimetype.startsWith('video') ? 'video' : 'pdf',
+      fileUrl: url,
+      publicId,
+      fileType,
+      version,
     },
     lectures: [],
   });
@@ -83,21 +82,19 @@ export const addLecture = expressAsyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Unit not found' });
   }
 
-  const signedUrl = cloudinary.utils.api_sign_request(
-    {
-      public_id: req.file.filename,
-      resource_type: req.file.mimetype.startsWith('video') ? 'video' : 'raw',
-        timestamp: Math.floor(Date.now() / 1000),
-      expires_at: Math.floor(Date.now() / 1000) + 3600, // URL expires in 1 hour
-    },
-    process.env.CLOUDINARY_API_SECRET
+  const { publicId, url, fileType, version } = await uploadFile(
+    req.file,
+    `courses/${courseId}/units/${unitId}/lectures`,
+    req.file.mimetype === 'application/pdf'
   );
 
+  logger.info(`Lecture file uploaded: publicId=${publicId}, version=${version}, fileType=${fileType}, url=${url}`);
   unit.lectures.push({
     title,
-    fileUrl: `${req.file.path}?_a=${signedUrl}`,
-    publicId: req.file.filename,
-    fileType: req.file.mimetype.startsWith('video') ? 'video' : 'pdf',
+    fileUrl: url,
+    publicId,
+    fileType,
+    version,
     order: Number(order),
   });
 
@@ -143,54 +140,6 @@ export const getCourseById = expressAsyncHandler(async (req, res) => {
   res.json(course);
 });
 
-// export const getCourseById = expressAsyncHandler(async (req, res) => {
-//   const course = await Course.findById(req.params.id).populate('createdBy', 'username email');
-//   if (!course) {
-//     logger.warn(`Course not found: ${req.params.id}`);
-//     return res.status(404).json({ message: 'Course not found' });
-//   }
-
-//   // Generate fresh signed URLs for secure access
-//   course.units.forEach((unit) => {
-//     if (unit.introduction.publicId) {
-//       const signedUrl = cloudinary.utils.api_sign_request(
-//         {
-//           public_id: unit.introduction.publicId,
-//           resource_type: unit.introduction.fileType === 'video' ? 'video' : 'raw',
-//           timestamp: Math.floor(Date.now() / 1000),
-//           expires_at: Math.floor(Date.now() / 1000) + 3600,
-//         },
-//         process.env.CLOUDINARY_API_SECRET
-//       );
-//       unit.introduction.fileUrl = `${cloudinary.url(unit.introduction.publicId, {
-//         resource_type: unit.introduction.fileType === 'video' ? 'video' : 'raw',
-//         secure: true,
-//       })}?_a=${signedUrl}`;
-//     }
-//     unit.lectures.forEach((lecture) => {
-//       if (lecture.publicId) {
-//         const signedUrl = cloudinary.utils.api_sign_request(
-//           {
-//             public_id: lecture.publicId,
-//             resource_type: lecture.fileType === 'video' ? 'video' : 'raw',
-//             timestamp: Math.floor(Date.now() / 1000),
-//             expires_at: Math.floor(Date.now() / 1000) + 3600,
-//           },
-//           process.env.CLOUDINARY_API_SECRET
-//         );
-//         lecture.fileUrl = `${cloudinary.url(lecture.publicId, {
-//           resource_type: lecture.fileType === 'video' ? 'video' : 'raw',
-//           secure: true,
-//         })}?_a=${signedUrl}`;
-//       }
-//     });
-//   });
-
-//   logger.info(`Fetched course: ${course.title}`);
-//   res.json(course);
-// });
-
-
 export const updateCourse = expressAsyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
   const course = await Course.findById(req.params.id);
@@ -223,7 +172,6 @@ export const deleteCourse = expressAsyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Unauthorized' });
   }
 
-  // Delete all associated Cloudinary files
   for (const unit of course.units) {
     if (unit.introduction.publicId) {
       await cloudinary.uploader.destroy(unit.introduction.publicId, {
@@ -244,7 +192,6 @@ export const deleteCourse = expressAsyncHandler(async (req, res) => {
   res.json({ message: 'Course deleted successfully' });
 });
 
-
 export const rateCourse = expressAsyncHandler(async (req, res) => {
   const { courseId } = req.params;
   const { rating } = req.body;
@@ -254,7 +201,7 @@ export const rateCourse = expressAsyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Course not found' });
   }
 
-  const existingRating = course.ratings.find(r => r.userId.toString() === req.user.id);
+  const existingRating = course.ratings.find((r) => r.userId.toString() === req.user.id);
   if (existingRating) {
     existingRating.rating = rating;
     existingRating.createdAt = new Date();
@@ -282,22 +229,55 @@ export const commentCourse = expressAsyncHandler(async (req, res) => {
   res.json({ message: 'Comment submitted' });
 });
 
-
-// controllers/courseController.js
 export const getSignedUrl = expressAsyncHandler(async (req, res) => {
-  const { publicId, fileType } = req.body;
-  const signedUrl = cloudinary.utils.api_sign_request(
-    {
+  const { publicId, fileType, version } = req.body;
+  logger.info(`Received signed URL request at ${new Date().toISOString()}: publicId=${publicId}, fileType=${fileType}, version=${version}`);
+
+  if (!publicId || !fileType || !version) {
+    logger.warn('Invalid request: missing publicId, fileType, or version');
+    return res.status(400).json({ message: 'publicId, fileType, and version are required' });
+  }
+
+  try {
+    const asset = await cloudinary.api.resource(publicId, { resource_type: fileType === 'video' ? 'video' : 'raw' });
+    if (asset.version.toString() !== version) {
+      logger.warn(`Version mismatch for ${publicId}: expected ${version}, found ${asset.version}`);
+      return res.status(400).json({ message: `Version mismatch: expected ${version}, found ${asset.version}` });
+    }
+    // if (asset.access_mode !== 'authenticated') {
+    //   logger.warn(`Asset ${publicId} not set to authenticated access`);
+    //   return res.status(400).json({ message: 'Asset must be authenticated' });
+    // }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const paramsToSign = {
       public_id: publicId,
       resource_type: fileType === 'video' ? 'video' : 'raw',
-      timestamp: Math.floor(Date.now() / 1000),
-      expires_at: Math.floor(Date.now() / 1000) + 300, // 5-minute expiry
-    },
-    process.env.CLOUDINARY_API_SECRET
-  );
-  const url = `${cloudinary.url(publicId, {
-    resource_type: fileType === 'video' ? 'video' : 'raw',
-    secure: true,
-  })}?_a=${signedUrl}`;
-  res.json({ url });
+      timestamp,
+      expires_at: timestamp + 300, // 5-minute expiry
+      format: 'm3u8',
+        //  access_mode: 'authenticated',
+              access_mode: 'public',
+
+    };
+    const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
+
+    const url = cloudinary.url(publicId, {
+      resource_type: fileType === 'video' ? 'video' : 'raw',
+      secure: true,
+      sign_url: true,
+      version,
+      format: 'm3u8',
+        //  access_mode: 'authenticated',
+              access_mode: 'public',
+      transformation: [{ streaming_profile: 'hd' }],
+    });
+
+    const signedUrl = `${url}?_a=${signature}`;
+    logger.info(`Generated signed URL at ${new Date().toISOString()}: ${signedUrl}`);
+    res.json({ url: signedUrl });
+  } catch (error) {
+    logger.error(`Error generating signed URL for ${publicId} at ${new Date().toISOString()}: ${error.message}`);
+    res.status(500).json({ message: 'Failed to generate signed URL', error: error.message });
+  }
 });
