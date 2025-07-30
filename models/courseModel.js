@@ -38,6 +38,5 @@ const courseSchema = new mongoose.Schema({
 });
 
 // Indexes for performance
-courseSchema.index({ createdBy: 1, title: 1, category: 1 });
-
+courseSchema.index({ createdBy: 1, title: 1, category: 1, 'units._id': 1, 'units.lectures._id': 1 });
 export default mongoose.model('Course', courseSchema);

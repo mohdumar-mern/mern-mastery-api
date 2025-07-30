@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCourse, addUnit, addLecture, getCourses, getCourseById, updateCourse, deleteCourse } from '../controllers/courseController.js';
+import { createCourse, addUnit, addLecture, getCourses, getCourseById, updateCourse, deleteCourse, rateCourse, commentCourse } from '../controllers/courseController.js';
 import { authMiddleware, adminMiddleware } from '../middlewares/authMiddleware.js';
 import { validateCourse, validateUnit, validateLecture, handleValidationErrors } from '../middlewares/validateMiddleware.js';
 import upload, { handleMulterError } from '../middlewares/uploadMiddleware.js';
@@ -15,5 +15,7 @@ router.get('/', getCourses);
 router.get('/:id', authMiddleware, getCourseById);
 router.put('/:id', authMiddleware, adminMiddleware, validateCourse, handleValidationErrors, updateCourse);
 router.delete('/:id', authMiddleware, adminMiddleware, deleteCourse);
+router.post('/:courseId/rate', authMiddleware, rateCourse);
+router.post('/:courseId/comment', authMiddleware, commentCourse);
 
 export default router;
