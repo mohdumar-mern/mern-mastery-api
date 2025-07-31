@@ -19,6 +19,7 @@ const __dirname = path.dirname(__filename);
 // Import rate limiter and routes
 import { globalLimiter } from "./utils/rateLimiter.js";
 import { errorHandling, pageNotFound } from "./middlewares/errorHandlerMiddleware.js";
+import { getProgress } from "./controllers/progressController.js";
 
 // Set view engine
 app.set("view engine", "ejs");
@@ -52,6 +53,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes)
 app.use("/api/courses", courseRoute)
 app.use("/api/progress", progressRoutes)
+app.use("/api/progress", getProgress)
 
 // page not found
 app.use(pageNotFound)

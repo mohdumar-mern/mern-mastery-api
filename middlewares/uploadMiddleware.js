@@ -21,8 +21,7 @@ const storage = new CloudinaryStorage({
       allowed_formats: allowedFormats,
       public_id: `${Date.now()}-${originalName}-${Math.random().toString(36).substring(2, 8)}`,
       secure: true,
-      // access_mode: 'authenticated',
-      access_mode: 'public',
+      access_mode: 'authenticated',
       transformation: isPDF
         ? undefined
         : [

@@ -229,55 +229,43 @@ export const commentCourse = expressAsyncHandler(async (req, res) => {
   res.json({ message: 'Comment submitted' });
 });
 
+
 export const getSignedUrl = expressAsyncHandler(async (req, res) => {
-  const { publicId, fileType, version } = req.body;
-  logger.info(`Received signed URL request at ${new Date().toISOString()}: publicId=${publicId}, fileType=${fileType}, version=${version}`);
+  const { publicId, fileType = 'video', version } = req.body;
 
   if (!publicId || !fileType || !version) {
-    logger.warn('Invalid request: missing publicId, fileType, or version');
     return res.status(400).json({ message: 'publicId, fileType, and version are required' });
   }
 
   try {
-    const asset = await cloudinary.api.resource(publicId, { resource_type: fileType === 'video' ? 'video' : 'raw' });
+    const asset = await cloudinary.api.resource(publicId, { resource_type: fileType });
     if (asset.version.toString() !== version) {
-      logger.warn(`Version mismatch for ${publicId}: expected ${version}, found ${asset.version}`);
       return res.status(400).json({ message: `Version mismatch: expected ${version}, found ${asset.version}` });
     }
     // if (asset.access_mode !== 'authenticated') {
-    //   logger.warn(`Asset ${publicId} not set to authenticated access`);
-    //   return res.status(400).json({ message: 'Asset must be authenticated' });
+    //   return res.status(400).json({ message: 'Asset must be configured with authenticated access mode' });
     // }
 
     const timestamp = Math.floor(Date.now() / 1000);
-    const paramsToSign = {
-      public_id: publicId,
-      resource_type: fileType === 'video' ? 'video' : 'raw',
-      timestamp,
-      expires_at: timestamp + 300, // 5-minute expiry
-      format: 'm3u8',
-        //  access_mode: 'authenticated',
-              access_mode: 'public',
-
-    };
-    const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
+    const expiresAt = timestamp + 300 * 1000; // 5 minutes validity
 
     const url = cloudinary.url(publicId, {
-      resource_type: fileType === 'video' ? 'video' : 'raw',
+      resource_type: fileType,
+      // type: 'authenticated',
+      format: 'm3u8',
       secure: true,
       sign_url: true,
       version,
-      format: 'm3u8',
-        //  access_mode: 'authenticated',
-              access_mode: 'public',
       transformation: [{ streaming_profile: 'hd' }],
+      expires_at: expiresAt,
+      timestamp,
     });
 
-    const signedUrl = `${url}?_a=${signature}`;
-    logger.info(`Generated signed URL at ${new Date().toISOString()}: ${signedUrl}`);
-    res.json({ url: signedUrl });
+    console.log('url: ', url);
+    logger.info(`Generated signed URL at ${new Date().toISOString()} for publicId: ${publicId}`);
+    res.json({ url });
   } catch (error) {
-    logger.error(`Error generating signed URL for ${publicId} at ${new Date().toISOString()}: ${error.message}`);
+    logger.error(`Failed to generate signed URL for publicId: ${publicId}, fileType: ${fileType} at ${new Date().toISOString()}: ${error.message}`);
     res.status(500).json({ message: 'Failed to generate signed URL', error: error.message });
   }
 });
