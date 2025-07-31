@@ -20,7 +20,7 @@ import courseRoutes from './routes/courseRoutes.js';
 import progressRoutes from './routes/progressRoutes.js';
 import { globalLimiter } from './utils/rateLimiter.js';
 import { errorHandling, pageNotFound } from './middlewares/errorHandlerMiddleware.js';
-import { corsOptions } from './utils/corsOptions.js';
+import { corsOptions } from './config/corsOptions.js';
 
 // Configuration
 app.set('view engine', 'ejs');
