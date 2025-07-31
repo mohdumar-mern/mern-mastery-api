@@ -136,7 +136,6 @@ export const getCourseById = expressAsyncHandler(async (req, res) => {
     logger.warn(`Course not found: ${req.params.id}`);
     return res.status(404).json({ message: 'Course not found' });
   }
-  console.log(course)
   logger.info(`Fetched course: ${course.title}`);
   res.json(course);
 });
@@ -262,7 +261,6 @@ export const getSignedUrl = expressAsyncHandler(async (req, res) => {
       timestamp,
     });
 
-    console.log('url: ', url);
     logger.info(`Generated signed URL at ${new Date().toISOString()} for publicId: ${publicId}`);
     res.json({ url });
   } catch (error) {

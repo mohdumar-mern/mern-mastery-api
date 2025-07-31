@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
   try {
     await connectDB();
     app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
       keepAlive(); // Optional: Only if you're using uptime pings
     });
   } catch (err) {
