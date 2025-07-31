@@ -1,23 +1,27 @@
-import mongoose, { version } from 'mongoose';
+import mongoose from 'mongoose';
 
 const lectureSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 100 },
-  fileUrl: { type: String, required: true },
-  publicId: { type: String },
+  fileUrl: { type: String, required: true, select: false }, // Exclude from queries by default
+  publicId: { type: String, required: true }, // Required for Cloudinary
   fileType: { type: String, enum: ['video', 'pdf'], required: true },
-  order: { type: Number, required: true }, // To maintain lecture order (1, 2, 3, etc.)
-  version: { type: String },
+  order: { type: Number, required: true },
+  version: { type: String, required: true }, // Required for Cloudinary versioning
+}, {
+  timestamps: true, // Adds createdAt and updatedAt
 });
 
 const unitSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 100 },
   introduction: {
-    fileUrl: { type: String, required: true },
-    publicId: { type: String },
+    fileUrl: { type: String, required: true, select: false },
+    publicId: { type: String, required: true },
     fileType: { type: String, enum: ['video', 'pdf'], required: true },
-    version: { type: String,  },
+    version: { type: String, required: true },
   },
   lectures: [lectureSchema],
+}, {
+  timestamps: true,
 });
 
 const courseSchema = new mongoose.Schema({
@@ -37,8 +41,14 @@ const courseSchema = new mongoose.Schema({
     comment: { type: String, trim: true, maxlength: 500, required: true },
     createdAt: { type: Date, default: Date.now },
   }],
+}, {
+  timestamps: true,
 });
 
-// Indexes for performance
-courseSchema.index({ createdBy: 1, title: 1, category: 1, 'units._id': 1, 'units.lectures._id': 1 });
+// Optimized indexes for common queries
+courseSchema.index({ createdBy: 1 }); // Index for creator-based queries
+courseSchema.index({ title: 'text', description: 'text' }); // Text index for search
+courseSchema.index({ 'units._id': 1 }); // Index for unit lookups
+courseSchema.index({ 'units.lectures._id': 1 }); // Index for lecture lookups
+
 export default mongoose.model('Course', courseSchema);

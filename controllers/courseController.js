@@ -136,6 +136,7 @@ export const getCourseById = expressAsyncHandler(async (req, res) => {
     logger.warn(`Course not found: ${req.params.id}`);
     return res.status(404).json({ message: 'Course not found' });
   }
+  console.log(course)
   logger.info(`Fetched course: ${course.title}`);
   res.json(course);
 });
