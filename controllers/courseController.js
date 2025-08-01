@@ -3,6 +3,8 @@ import Course from '../models/courseModel.js';
 import cloudinary from '../utils/cloudinary.js';
 import { uploadFile } from '../middlewares/uploadMiddleware.js';
 import logger from '../utils/logger.js';
+import { createCipheriv, randomBytes } from 'crypto';
+
 
 const MAX_FILE_SIZE = process.env.MAX_FILE_SIZE || 300 * 1024 * 1024; // 300 MB in bytes
 
@@ -234,6 +236,10 @@ export const commentCourse = expressAsyncHandler(async (req, res) => {
 });
 
 
+
+
+
+
 export const getSignedUrl = expressAsyncHandler(async (req, res) => {
   const { publicId, fileType = 'video', version } = req.body;
 
@@ -241,34 +247,90 @@ export const getSignedUrl = expressAsyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'publicId, fileType, and version are required' });
   }
 
+  // Validate AES secret key (expecting 64-char hex string = 32 bytes)
+  const secretKey = process.env.AES_SECRET_KEY;
+  if (!secretKey) {
+    logger.error('AES_SECRET_KEY is not set in environment variables.');
+    return res.status(500).json({ message: 'Server configuration error: AES_SECRET_KEY is not set. Please set a 64-character hex string in .env.' });
+  }
+  const keyBuffer = Buffer.from(secretKey, 'hex');
+  if (keyBuffer.length !== 32) {
+    logger.error(`Invalid AES secret key length: ${keyBuffer.length} bytes, expected 32 bytes.`);
+    return res.status(500).json({ message: 'Server configuration error: AES_SECRET_KEY must be a 64-character hex string (32 bytes).' });
+  }
+
   try {
+    // Check user access to the course
+    const course = await Course.findOne({
+      $or: [
+        { 'units.introduction.publicId': publicId },
+        { 'units.lectures.publicId': publicId },
+      ],
+    });
+    if (!course) {
+      logger.warn(`No course found for publicId: ${publicId}`);
+      return res.status(404).json({ message: 'Resource not found' });
+    }
+    if (course.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      logger.warn(`Unauthorized signed URL request by user ${req.user.id} for publicId: ${publicId}`);
+      return res.status(403).json({ message: 'Unauthorized access to resource' });
+    }
+
+    // Verify asset
     const asset = await cloudinary.api.resource(publicId, { resource_type: fileType });
     if (asset.version.toString() !== version) {
       return res.status(400).json({ message: `Version mismatch: expected ${version}, found ${asset.version}` });
     }
     // if (asset.access_mode !== 'authenticated') {
+    //   logger.warn(`Asset not configured for authenticated access: ${publicId}`);
     //   return res.status(400).json({ message: 'Asset must be configured with authenticated access mode' });
     // }
 
     const timestamp = Math.floor(Date.now() / 1000);
-    const expiresAt = timestamp + 300 * 1000; // 5 minutes validity
+    const expiresAt = timestamp + 300; // 5 min in seconds
 
-    const url = cloudinary.url(publicId, {
+    const signedUrl = cloudinary.url(publicId, {
       resource_type: fileType,
-      // type: 'authenticated',
       format: 'm3u8',
       secure: true,
       sign_url: true,
       version,
-      transformation: [{ streaming_profile: 'hd' }],
+      // type: 'authenticated',
+      transformation: [
+        {
+          streaming_profile: 'hd',
+          // overlay: {
+          //   font_family: 'Arial',
+          //   font_size: 20,
+          //   text: `User: ${req.user.id}`,
+          //   position: 'center',
+          // },
+        },
+      ],
       expires_at: expiresAt,
       timestamp,
     });
 
-    logger.info(`Generated signed URL at ${new Date().toISOString()} for publicId: ${publicId}`);
-    res.json({ url });
+    // AES Encryption
+    const iv = randomBytes(16);
+    const cipher = createCipheriv('aes-256-cbc', keyBuffer, iv);
+    let encrypted = cipher.update(signedUrl, 'utf8');
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    const encryptedUrl = iv.toString('hex') + ':' + encrypted.toString('hex');
+
+    logger.info(`Generated encrypted signed URL at ${new Date().toISOString()} for publicId: ${publicId}`);
+    res.json({ encryptedUrl });
   } catch (error) {
     logger.error(`Failed to generate signed URL for publicId: ${publicId}, fileType: ${fileType} at ${new Date().toISOString()}: ${error.message}`);
+    if (error.message.includes('Rate limit exceeded')) {
+      return res.status(429).json({ message: 'Cloudinary rate limit exceeded' });
+    }
+    if (error.message.includes('Resource not found')) {
+      return res.status(404).json({ message: 'Resource not found in Cloudinary' });
+    }
+    if (error.message.includes('Invalid API key')) {
+      return res.status(401).json({ message: 'Invalid Cloudinary configuration' });
+    }
     res.status(500).json({ message: 'Failed to generate signed URL', error: error.message });
   }
 });
