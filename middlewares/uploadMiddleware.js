@@ -15,22 +15,20 @@ const storage = new CloudinaryStorage({
     const resourceType = isPDF ? 'raw' : 'video';
     const originalName = file.originalname.split('.')[0].replace(/\s+/g, '_');
 
+    const publicId = `${Date.now()}-${originalName}-${Math.random().toString(36).substring(2, 8)}`;
+
     const config = {
       folder: `mern-mastery/${folder}`,
       resource_type: resourceType,
       allowed_formats: allowedFormats,
-      public_id: `${Date.now()}-${originalName}-${Math.random().toString(36).substring(2, 8)}`,
+      public_id: publicId,
       secure: true,
       access_mode: 'authenticated',
-      transformation: isPDF
-        ? undefined
-        : [
-            { streaming_profile: 'hd', format: 'm3u8' },
-            { fetch_format: 'auto', quality: 'auto' },
-          ],
+      // ❌ REMOVE transformation here — large video uploads break
+      // ✅ Use eager_async separately in uploadFile instead
     };
 
-    logger.info(`Uploading file: ${file.originalname}, Config: ${JSON.stringify(config)}`);
+    logger.info(`Uploading file via Multer: ${file.originalname}, Config: ${JSON.stringify(config)}`);
     return config;
   },
 });
@@ -48,15 +46,16 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB max
+    fileSize: 200 * 1024 * 1024, // 200MB
   },
 });
 
+// Middleware to handle Multer errors
 export const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     logger.error(`Multer error: ${err.message}`);
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File size exceeds 100MB limit' });
+      return res.status(400).json({ message: 'File size exceeds 200MB limit' });
     }
     return res.status(400).json({ message: err.message });
   } else if (err) {
@@ -66,6 +65,7 @@ export const handleMulterError = (err, req, res, next) => {
   next();
 };
 
+// Direct upload function (used for manual uploads)
 export const uploadFile = async (file, folder, isPDF) => {
   try {
     const ext = file.originalname.split('.').pop().toLowerCase();
@@ -77,16 +77,17 @@ export const uploadFile = async (file, folder, isPDF) => {
       allowed_formats: allowedFormats,
       public_id: `${Date.now()}-${originalName}-${Math.random().toString(36).substring(2, 8)}`,
       secure: true,
-      // access_mode: 'authenticated',
-      transformation: isPDF
-        ? undefined
-        : [
+      access_mode: 'authenticated',
+      eager: !isPDF
+        ? [
             { streaming_profile: 'hd', format: 'm3u8' },
             { fetch_format: 'auto', quality: 'auto' },
-          ],
+          ]
+        : undefined,
+      eager_async: !isPDF, // Required for large video processing
     });
 
-    logger.info(`File uploaded successfully: ${file.originalname}, Public ID: ${result.public_id}, Version: ${result.version}, URL: ${result.secure_url}`);
+    logger.info(`File uploaded: ${file.originalname}, Public ID: ${result.public_id}, Version: ${result.version}`);
     return {
       publicId: result.public_id,
       url: result.secure_url,

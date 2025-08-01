@@ -4,6 +4,9 @@ import cloudinary from '../utils/cloudinary.js';
 import { uploadFile } from '../middlewares/uploadMiddleware.js';
 import logger from '../utils/logger.js';
 
+const MAX_FILE_SIZE = process.env.MAX_FILE_SIZE || 300 * 1024 * 1024; // 300 MB in bytes
+
+
 export const createCourse = expressAsyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
   const course = new Course({
@@ -156,6 +159,7 @@ export const updateCourse = expressAsyncHandler(async (req, res) => {
   course.description = description || course.description;
   course.category = category || course.category;
   await course.save();
+
 
   logger.info(`Course updated: ${course.title} by user ${req.user.id}`);
   res.json(course);
