@@ -2,13 +2,14 @@ import expressAsyncHandler from 'express-async-handler';
 import Course from '../models/courseModel.js';
 import cloudinary from '../utils/cloudinary.js';
 import { uploadFile } from '../middlewares/uploadMiddleware.js';
+import axios from 'axios';
 import logger from '../utils/logger.js';
 import { createCipheriv, randomBytes } from 'crypto';
 
 
-const MAX_FILE_SIZE = process.env.MAX_FILE_SIZE || 300 * 1024 * 1024; // 300 MB in bytes
+const MAX_FILE_SIZE = process.env.MAX_FILE_SIZE || 100 * 1024 * 1024; // 100 MB in bytes
 
-
+// Create course
 export const createCourse = expressAsyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
   const course = new Course({
@@ -22,6 +23,7 @@ export const createCourse = expressAsyncHandler(async (req, res) => {
   res.status(201).json(course);
 });
 
+// Add Unit for Existing Course
 export const addUnit = expressAsyncHandler(async (req, res) => {
   const { courseId } = req.params;
   const { title } = req.body;
@@ -63,6 +65,7 @@ export const addUnit = expressAsyncHandler(async (req, res) => {
   res.status(201).json(course);
 });
 
+// Add Lecture for Existing Unit
 export const addLecture = expressAsyncHandler(async (req, res) => {
   const { courseId, unitId } = req.params;
   const { title, order } = req.body;
@@ -108,6 +111,8 @@ export const addLecture = expressAsyncHandler(async (req, res) => {
   res.status(201).json(course);
 });
 
+
+// Get All courses
 export const getCourses = expressAsyncHandler(async (req, res) => {
   const { page = 1, limit = 10, search = '', category = '' } = req.query;
   const query = {
@@ -135,6 +140,7 @@ export const getCourses = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// Get Course by ID`
 export const getCourseById = expressAsyncHandler(async (req, res) => {
   const course = await Course.findById(req.params.id).populate('createdBy', 'username email').lean();
   if (!course) {
@@ -145,6 +151,7 @@ export const getCourseById = expressAsyncHandler(async (req, res) => {
   res.json(course);
 });
 
+// Update Course Name
 export const updateCourse = expressAsyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
   const course = await Course.findById(req.params.id);
@@ -167,6 +174,7 @@ export const updateCourse = expressAsyncHandler(async (req, res) => {
   res.json(course);
 });
 
+// Delete course by ID and also delete inside Units nad Lectures
 export const deleteCourse = expressAsyncHandler(async (req, res) => {
   const course = await Course.findById(req.params.id);
   if (!course) {
@@ -198,6 +206,8 @@ export const deleteCourse = expressAsyncHandler(async (req, res) => {
   res.json({ message: 'Course deleted successfully' });
 });
 
+
+// Rating Course
 export const rateCourse = expressAsyncHandler(async (req, res) => {
   const { courseId } = req.params;
   const { rating } = req.body;
@@ -220,6 +230,7 @@ export const rateCourse = expressAsyncHandler(async (req, res) => {
   res.json({ message: 'Rating submitted' });
 });
 
+// Comment Course
 export const commentCourse = expressAsyncHandler(async (req, res) => {
   const { courseId } = req.params;
   const { comment } = req.body;
@@ -239,7 +250,7 @@ export const commentCourse = expressAsyncHandler(async (req, res) => {
 
 
 
-
+// Generate a Secure and SignUrl for a given publicId and also Encrypted for using 'AES-256-CBC' encryption
 export const getSignedUrl = expressAsyncHandler(async (req, res) => {
   const { publicId, fileType = 'video', version } = req.body;
 
@@ -247,20 +258,20 @@ export const getSignedUrl = expressAsyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'publicId, fileType, and version are required' });
   }
 
-  // Validate AES secret key (expecting 64-char hex string = 32 bytes)
   const secretKey = process.env.AES_SECRET_KEY;
   if (!secretKey) {
     logger.error('AES_SECRET_KEY is not set in environment variables.');
     return res.status(500).json({ message: 'Server configuration error: AES_SECRET_KEY is not set. Please set a 64-character hex string in .env.' });
   }
+
   const keyBuffer = Buffer.from(secretKey, 'hex');
+
   if (keyBuffer.length !== 32) {
     logger.error(`Invalid AES secret key length: ${keyBuffer.length} bytes, expected 32 bytes.`);
     return res.status(500).json({ message: 'Server configuration error: AES_SECRET_KEY must be a 64-character hex string (32 bytes).' });
   }
 
   try {
-    // Check user access to the course
     const course = await Course.findOne({
       $or: [
         { 'units.introduction.publicId': publicId },
@@ -276,18 +287,14 @@ export const getSignedUrl = expressAsyncHandler(async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized access to resource' });
     }
 
-    // Verify asset
     const asset = await cloudinary.api.resource(publicId, { resource_type: fileType });
     if (asset.version.toString() !== version) {
       return res.status(400).json({ message: `Version mismatch: expected ${version}, found ${asset.version}` });
     }
-    // if (asset.access_mode !== 'authenticated') {
-    //   logger.warn(`Asset not configured for authenticated access: ${publicId}`);
-    //   return res.status(400).json({ message: 'Asset must be configured with authenticated access mode' });
-    // }
+ 
 
     const timestamp = Math.floor(Date.now() / 1000);
-    const expiresAt = timestamp + 300; // 5 min in seconds
+    const expiresAt = timestamp + 300;
 
     const signedUrl = cloudinary.url(publicId, {
       resource_type: fileType,
@@ -295,23 +302,17 @@ export const getSignedUrl = expressAsyncHandler(async (req, res) => {
       secure: true,
       sign_url: true,
       version,
-      // type: 'authenticated',
       transformation: [
         {
           streaming_profile: 'hd',
-          // overlay: {
-          //   font_family: 'Arial',
-          //   font_size: 20,
-          //   text: `User: ${req.user.id}`,
-          //   position: 'center',
-          // },
+          drm: 'widevine',
+          
         },
       ],
       expires_at: expiresAt,
       timestamp,
     });
 
-    // AES Encryption
     const iv = randomBytes(16);
     const cipher = createCipheriv('aes-256-cbc', keyBuffer, iv);
     let encrypted = cipher.update(signedUrl, 'utf8');
@@ -332,5 +333,64 @@ export const getSignedUrl = expressAsyncHandler(async (req, res) => {
       return res.status(401).json({ message: 'Invalid Cloudinary configuration' });
     }
     res.status(500).json({ message: 'Failed to generate signed URL', error: error.message });
+  }
+});
+
+
+// Mark lecture Complete
+export const markLectureComplete = expressAsyncHandler(async (req, res) => {
+  const { lectureId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const course = await Course.findOne({
+      $or: [
+        { 'units.introduction._id': lectureId },
+        { 'units.lectures._id': lectureId },
+      ],
+    });
+
+    if (!course) {
+      logger.warn(`No course found for lectureId: ${lectureId}`);
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    if (course.createdBy.toString() !== userId && req.user.role !== 'admin') {
+      logger.warn(`Unauthorized lecture completion request by user ${userId} for lectureId: ${lectureId}`);
+      return res.status(403).json({ message: 'Unauthorized to mark lecture complete' });
+    }
+
+    logger.info(`Lecture ${lectureId} marked complete for user ${userId} at ${new Date().toISOString()}`);
+    res.json({ message: 'Lecture marked as complete' });
+  } catch (error) {
+    logger.error(`Failed to mark lecture ${lectureId} complete for user ${userId}: ${error.message}`);
+    res.status(500).json({ message: 'Failed to mark lecture complete', error: error.message });
+  }
+});
+
+
+// Set Proxy URL
+export const proxyVideo = expressAsyncHandler(async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+    logger.warn(`Missing URL in proxy request: url=${url}`);
+    return res.status(400).json({ message: 'URL is required' });
+  }
+
+  try {
+    const response = await axios(decodeURIComponent(url), { responseType: 'stream' });
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.mpegurl',
+      'Access-Control-Allow-Origin': process.env.FRONTEND_URL || 'http://localhost:5173',
+      // 'Access-Control-Allow-Credentials': 'true',
+      'Cache-Control': 'no-cache',
+    });
+
+    response.data.pipe(res);
+  } catch (error) {
+    logger.error(`Proxy error for URL: ${url}: ${error.message}`);
+    res.status(500).json({ message: 'Proxy error', error: error.message });
   }
 });

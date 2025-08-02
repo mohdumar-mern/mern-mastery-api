@@ -24,8 +24,6 @@ const storage = new CloudinaryStorage({
       public_id: publicId,
       secure: true,
       access_mode: 'authenticated',
-      // ❌ REMOVE transformation here — large video uploads break
-      // ✅ Use eager_async separately in uploadFile instead
     };
 
     logger.info(`Uploading file via Multer: ${file.originalname}, Config: ${JSON.stringify(config)}`);
@@ -46,7 +44,7 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 200 * 1024 * 1024, // 200MB
+    fileSize: 100 * 1024 * 1024, // 100MB
   },
 });
 
@@ -55,7 +53,7 @@ export const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     logger.error(`Multer error: ${err.message}`);
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File size exceeds 200MB limit' });
+      return res.status(400).json({ message: 'File size exceeds 100MB limit' });
     }
     return res.status(400).json({ message: err.message });
   } else if (err) {

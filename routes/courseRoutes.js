@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCourse, addUnit, addLecture, getCourses, getCourseById, updateCourse, deleteCourse, rateCourse, commentCourse, getSignedUrl } from '../controllers/courseController.js';
+import { createCourse, addUnit, addLecture, getCourses, getCourseById, updateCourse, deleteCourse, rateCourse, commentCourse, getSignedUrl, proxyVideo } from '../controllers/courseController.js';
 import { authMiddleware, adminMiddleware } from '../middlewares/authMiddleware.js';
 import { validateCourse, validateUnit, validateLecture, handleValidationErrors } from '../middlewares/validateMiddleware.js';
 import upload, { handleMulterError } from '../middlewares/uploadMiddleware.js';
@@ -18,6 +18,8 @@ router.delete('/:id', authMiddleware, adminMiddleware, deleteCourse);
 router.post('/:courseId/rate', authMiddleware, rateCourse);
 router.post('/:courseId/comment', authMiddleware, commentCourse);
 router.post('/signed-url', authMiddleware, getSignedUrl);
+router.post('/proxy-video', authMiddleware, proxyVideo);
 // router.post('/signed-url', getSignedUrl);
+
 
 export default router; 
